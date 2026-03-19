@@ -34,12 +34,14 @@ export default function HistoryView() {
   const [selected, setSelected] = useState<JournalEntry | null>(null);
   const [filter, setFilter] = useState('');
   const [patterns, setPatterns] = useState<{ word: string; count: number }[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const all = getEntries().sort((a, b) => b.date.localeCompare(a.date));
     setEntries(all);
     if (all.length > 0) setSelected(all[0]);
     setPatterns(getRecurringPatterns());
+    setMounted(true);
   }, []);
 
   const filtered = filter
@@ -58,7 +60,7 @@ export default function HistoryView() {
   const hasContent = (entry: JournalEntry) =>
     FIELD_LABELS.some((f) => entry[f.key]?.trim());
 
-  if (entries.length === 0) {
+  if (!mounted || entries.length === 0) {
     return (
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-32 text-center">
         <p

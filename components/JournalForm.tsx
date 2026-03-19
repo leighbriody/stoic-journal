@@ -34,11 +34,15 @@ type Screen = 'intro' | 'writing' | 'done';
 
 export default function JournalForm() {
   const today = getToday();
-  const [entry, setEntry] = useState<JournalEntry>(() => {
-    if (typeof window === 'undefined') return emptyEntry(today);
-    return getEntryByDate(today) ?? emptyEntry(today);
-  });
+  const [entry, setEntry] = useState<JournalEntry>(() => emptyEntry(today));
+  const [mounted, setMounted] = useState(false);
   const [screen, setScreen] = useState<Screen>('intro');
+
+  useEffect(() => {
+    const saved = getEntryByDate(today);
+    if (saved) setEntry(saved);
+    setMounted(true);
+  }, [today]);
   const [stepIndex, setStepIndex] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -117,7 +121,7 @@ export default function JournalForm() {
 
   // ── Intro screen ──────────────────────────────────────────────
   if (screen === 'intro') {
-    const alreadyStarted = STEPS.some((s) => s.key && entry[s.key]?.trim());
+    const alreadyStarted = mounted && STEPS.some((s) => s.key && entry[s.key]?.trim());
     const quote = getQuoteForDate(today);
     return (
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">

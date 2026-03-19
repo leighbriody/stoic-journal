@@ -43,12 +43,10 @@ type Screen = 'overview' | 'writing' | 'done';
 
 export default function WeeklyReview() {
   const weekStart = getCurrentWeekStart();
-  const [review, setReview] = useState<WeeklyReview>(() => {
-    if (typeof window === 'undefined') return emptyWeeklyReview(weekStart);
-    return getWeeklyReview(weekStart) ?? emptyWeeklyReview(weekStart);
-  });
+  const [review, setReview] = useState<WeeklyReview>(() => emptyWeeklyReview(weekStart));
   const [weekEntries, setWeekEntries] = useState<JournalEntry[]>([]);
   const [screen, setScreen] = useState<Screen>('overview');
+  const [mounted, setMounted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -59,8 +57,11 @@ export default function WeeklyReview() {
   const isLast = stepIndex === WEEKLY_STEPS.length - 1;
 
   useEffect(() => {
+    const saved = getWeeklyReview(weekStart);
+    if (saved) setReview(saved);
     setWeekEntries(getLastWeekEntries());
-  }, []);
+    setMounted(true);
+  }, [weekStart]);
 
   useEffect(() => {
     if (screen === 'writing') {
@@ -106,7 +107,7 @@ export default function WeeklyReview() {
 
   // ── Overview ──────────────────────────────────────────────────
   if (screen === 'overview') {
-    const hasReview = WEEKLY_STEPS.some((s) => review[s.key]?.trim());
+    const hasReview = mounted && WEEKLY_STEPS.some((s) => review[s.key]?.trim());
     const [wy, wm, wd] = weekStart.split('-').map(Number);
     const weekEnd = new Date(wy, wm - 1, wd + 6);
     const weekEndStr = weekEnd.toISOString().split('T')[0];
