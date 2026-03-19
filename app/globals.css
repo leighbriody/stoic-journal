@@ -72,25 +72,26 @@ body::after {
   background: #8a6540;
 }
 
-/* Journal textarea styling */
+/* Guided flow textarea */
 .journal-textarea {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #2a2318;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid #2a2318;
+  border-radius: 2px;
   color: #e6ddd0;
   font-family: var(--font-dm-mono), 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: 1.9;
   resize: none;
   width: 100%;
   outline: none;
-  padding: 0.5rem 0;
-  transition: border-color 0.3s ease;
-  min-height: 80px;
+  padding: 1.25rem 1.5rem;
+  transition: border-color 0.25s ease, background 0.25s ease;
+  min-height: 160px;
 }
 
 .journal-textarea:focus {
-  border-bottom-color: #8a6540;
+  border-color: #8a6540;
+  background: rgba(196, 147, 90, 0.03);
 }
 
 .journal-textarea::placeholder {
@@ -141,22 +142,24 @@ body::after {
   50% { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* Entry fade in */
-.entry-section {
-  animation: fadeUp 0.4s ease forwards;
+/* Step fade in */
+.step-enter {
+  animation: stepFadeUp 0.35s ease forwards;
   opacity: 0;
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
+@keyframes stepFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.entry-section:nth-child(1) { animation-delay: 0.05s; }
-.entry-section:nth-child(2) { animation-delay: 0.1s; }
-.entry-section:nth-child(3) { animation-delay: 0.15s; }
-.entry-section:nth-child(4) { animation-delay: 0.2s; }
-.entry-section:nth-child(5) { animation-delay: 0.25s; }
-.entry-section:nth-child(6) { animation-delay: 0.3s; }
-.entry-section:nth-child(7) { animation-delay: 0.35s; }
-.entry-section:nth-child(8) { animation-delay: 0.4s; }
+/* Completion screen */
+.completion-enter {
+  animation: completionFade 0.6s ease forwards;
+  opacity: 0;
+}
+
+@keyframes completionFade {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}

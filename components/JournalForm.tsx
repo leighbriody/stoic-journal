@@ -4,76 +4,31 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JournalEntry } from '@/lib/types';
 import { saveEntry, getEntryByDate, emptyEntry, formatDate, getToday } from '@/lib/storage';
 
-type Section =
-  | { number: string; title: string; subtitle: string | null; fields: readonly { key: string; placeholder: string; label?: string }[]; isIntro: true }
-  | { number: string; title: string; subtitle: string | null; fields: readonly { key: string; placeholder: string; label?: string }[]; isIntro?: false };
-
-const SECTIONS: Section[] = [
-  {
-    number: '01',
-    title: 'Clear the noise',
-    subtitle: 'Walk first. No phone, no music.',
-    fields: [],
-    isIntro: true,
-  },
-  {
-    number: '02',
-    title: "What's on your mind right now?",
-    subtitle: null,
-    fields: [
-      { key: 'mindRightNow', placeholder: 'Let it out. No filter.' },
-    ],
-  },
-  {
-    number: '03',
-    title: "Today's reflection",
-    subtitle: null,
-    fields: [
-      { key: 'didWell', label: 'What did I do well today?', placeholder: 'Be honest.' },
-      { key: 'fellShort', label: 'Where did I fall short?', placeholder: 'Own it.' },
-      { key: 'actedIntentionally', label: 'Did I act intentionally or reactively?', placeholder: 'Reflect.' },
-    ],
-  },
-  {
-    number: '04',
-    title: 'Habits & progress',
-    subtitle: null,
-    fields: [
-      { key: 'followedThrough', label: 'Did I follow through on what I said I would do?', placeholder: 'Yes / No / Partly' },
-      { key: 'smallWin', label: "What's one small win today?", placeholder: 'Find it.' },
-      { key: 'drifting', label: 'Where am I drifting?', placeholder: 'Be specific.' },
-    ],
-  },
-  {
-    number: '05',
-    title: 'One thing to improve tomorrow',
-    subtitle: null,
-    fields: [
-      { key: 'improveTomorrow', placeholder: 'One thing. Make it concrete.' },
-    ],
-  },
-  {
-    number: '06',
-    title: "Anything I'm avoiding?",
-    subtitle: null,
-    fields: [
-      { key: 'avoiding', placeholder: 'Name it.' },
-    ],
-  },
-  {
-    number: '07',
-    title: 'Reset',
-    subtitle: null,
-    fields: [
-      { key: 'whatMatters', label: 'What actually matters right now?', placeholder: 'Strip it back.' },
-      { key: 'letGo', label: 'What can I let go of?', placeholder: 'Release it.' },
-    ],
-  },
-] as const;
-
 type FieldKey = keyof Omit<JournalEntry, 'id' | 'date' | 'savedAt'>;
 
-type SaveStatus = 'idle' | 'saving' | 'saved';
+interface Step {
+  key: FieldKey | null;
+  group: string;
+  question: string;
+  placeholder: string;
+  hint?: string;
+}
+
+const STEPS: Step[] = [
+  { key: 'mindRightNow', group: 'Mind', question: "What's on your mind right now?", placeholder: "Let it out. Don't filter it.", hint: 'Anything. Big or small.' },
+  { key: 'didWell', group: 'Reflection', question: 'What did I do well today?', placeholder: 'Be honest with yourself.', hint: 'Even small things count.' },
+  { key: 'fellShort', group: 'Reflection', question: 'Where did I fall short?', placeholder: 'Own it.', hint: 'No self-punishment — just clarity.' },
+  { key: 'actedIntentionally', group: 'Reflection', question: 'Did I act intentionally or reactively?', placeholder: 'How did it feel to move through the day?', hint: undefined },
+  { key: 'followedThrough', group: 'Habits', question: 'Did I follow through on what I said I would do?', placeholder: 'Yes / No / Partly — and why.', hint: undefined },
+  { key: 'smallWin', group: 'Habits', question: "What's one small win today?", placeholder: 'Find it. It exists.', hint: undefined },
+  { key: 'drifting', group: 'Habits', question: 'Where am I drifting?', placeholder: 'Be specific. Name the drift.', hint: undefined },
+  { key: 'improveTomorrow', group: 'Tomorrow', question: 'One thing to improve tomorrow', placeholder: 'Concrete. Actionable. One thing.', hint: undefined },
+  { key: 'avoiding', group: 'Honesty', question: "Anything I'm avoiding?", placeholder: 'Name it.', hint: 'The thing you skipped past — that one.' },
+  { key: 'whatMatters', group: 'Reset', question: 'What actually matters right now?', placeholder: 'Strip it back. What is real?', hint: undefined },
+  { key: 'letGo', group: 'Reset', question: 'What can I let go of?', placeholder: 'Release it here.', hint: undefined },
+];
+
+type Screen = 'intro' | 'writing' | 'done';
 
 export default function JournalForm() {
   const today = getToday();
@@ -81,28 +36,75 @@ export default function JournalForm() {
     if (typeof window === 'undefined') return emptyEntry(today);
     return getEntryByDate(today) ?? emptyEntry(today);
   });
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [screen, setScreen] = useState<Screen>('intro');
+  const [stepIndex, setStepIndex] = useState(0);
+  const [animKey, setAnimKey] = useState(0);
+  const [saving, setSaving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const triggerSave = useCallback((updated: JournalEntry) => {
+  const currentStep = STEPS[stepIndex];
+  const progress = (stepIndex / STEPS.length) * 100;
+  const isLast = stepIndex === STEPS.length - 1;
+
+  // Auto-focus textarea when step changes
+  useEffect(() => {
+    if (screen === 'writing') {
+      const t = setTimeout(() => textareaRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [stepIndex, screen]);
+
+  const persistEntry = useCallback((updated: JournalEntry) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveStatus('saving');
+    setSaving(true);
     saveTimer.current = setTimeout(() => {
       saveEntry(updated);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 1800);
-    }, 800);
+      setSaving(false);
+    }, 600);
   }, []);
 
   const handleChange = useCallback(
-    (key: FieldKey, value: string) => {
+    (value: string) => {
+      if (!currentStep.key) return;
       setEntry((prev) => {
-        const updated = { ...prev, [key]: value };
-        triggerSave(updated);
+        const updated = { ...prev, [currentStep.key!]: value };
+        persistEntry(updated);
         return updated;
       });
     },
-    [triggerSave]
+    [currentStep, persistEntry]
+  );
+
+  const goNext = useCallback(() => {
+    if (isLast) {
+      // Save immediately on finish
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveEntry(entry);
+      setScreen('done');
+    } else {
+      setStepIndex((i) => i + 1);
+      setAnimKey((k) => k + 1);
+    }
+  }, [isLast, entry]);
+
+  const goBack = useCallback(() => {
+    if (stepIndex === 0) {
+      setScreen('intro');
+    } else {
+      setStepIndex((i) => i - 1);
+      setAnimKey((k) => k + 1);
+    }
+  }, [stepIndex]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        goNext();
+      }
+    },
+    [goNext]
   );
 
   useEffect(() => {
@@ -111,159 +113,186 @@ export default function JournalForm() {
     };
   }, []);
 
+  // ── Intro screen ──────────────────────────────────────────────
+  if (screen === 'intro') {
+    const alreadyStarted = STEPS.some((s) => s.key && entry[s.key]?.trim());
+    return (
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
+        <div className="step-enter max-w-md w-full text-center">
+          <p
+            className="text-xs tracking-[0.4em] uppercase mb-8"
+            style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
+          >
+            Evening Solitude · {formatDate(today)}
+          </p>
+
+          <h1
+            className="text-6xl font-light mb-4 leading-tight"
+            style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
+          >
+            Clear the noise
+          </h1>
+
+          <p
+            className="text-sm mb-12 leading-relaxed"
+            style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
+          >
+            Walk first. 10 minutes. No phone, no music.
+            <br />
+            Let your mind settle, then come back here.
+          </p>
+
+          <button
+            onClick={() => { setScreen('writing'); setAnimKey((k) => k + 1); }}
+            className="w-full py-4 text-sm tracking-[0.2em] uppercase transition-all duration-200"
+            style={{
+              fontFamily: 'var(--font-dm-mono)',
+              background: 'rgba(196,147,90,0.1)',
+              border: '1px solid #8a6540',
+              color: '#c4935a',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.18)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.1)'; }}
+          >
+            {alreadyStarted ? 'Continue tonight\'s entry' : 'Begin'}
+          </button>
+
+          {alreadyStarted && (
+            <p className="text-xs mt-4" style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}>
+              You started this already — your answers are saved.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Done screen ───────────────────────────────────────────────
+  if (screen === 'done') {
+    return (
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
+        <div className="completion-enter max-w-md w-full text-center">
+          <div
+            style={{ width: '1px', height: '80px', background: 'linear-gradient(to bottom, transparent, #2a2318)', margin: '0 auto 3rem' }}
+          />
+          <p
+            className="text-xs tracking-[0.4em] uppercase mb-6"
+            style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
+          >
+            {formatDate(today)}
+          </p>
+          <p
+            className="text-3xl font-light italic mb-12 leading-relaxed"
+            style={{ fontFamily: 'var(--font-cormorant)', color: '#c4935a' }}
+          >
+            &ldquo;I showed up today.<br />Tomorrow I improve.&rdquo;
+          </p>
+          <div
+            style={{ width: '1px', height: '80px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '0 auto 3rem' }}
+          />
+          <button
+            onClick={() => { setScreen('writing'); setStepIndex(0); setAnimKey((k) => k + 1); }}
+            className="text-xs tracking-[0.2em] uppercase transition-colors duration-200"
+            style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#6b5f52'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#3a3028'; }}
+          >
+            Review answers
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Writing screen ────────────────────────────────────────────
+  const currentValue = currentStep.key ? (entry[currentStep.key] as string) : '';
+
   return (
-    <div className="relative z-10 max-w-2xl mx-auto px-6 py-16 pb-32">
-      {/* Header */}
-      <div className="mb-16">
-        <p
-          className="text-xs tracking-[0.3em] uppercase mb-3"
-          style={{ color: '#8a6540', fontFamily: 'var(--font-dm-mono)' }}
-        >
-          Evening Solitude
-        </p>
-        <h1
-          className="text-5xl font-light leading-tight mb-2"
-          style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
-        >
-          {formatDate(today)}
-        </h1>
-        <div className="flex items-center gap-3 mt-4">
-          <div style={{ width: '40px', height: '1px', background: '#2a2318' }} />
-          <div className="flex items-center gap-2">
-            {saveStatus === 'saving' && (
-              <>
-                <span className="save-dot" />
-                <span className="text-xs" style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}>
-                  saving
-                </span>
-              </>
-            )}
-            {saveStatus === 'saved' && (
-              <span className="text-xs" style={{ color: '#8a6540', fontFamily: 'var(--font-dm-mono)' }}>
-                saved
-              </span>
-            )}
-          </div>
+    <div className="relative z-10 min-h-screen flex flex-col px-6 py-8 max-w-2xl mx-auto">
+      {/* Progress bar */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={goBack}
+            className="text-xs tracking-[0.2em] uppercase transition-colors duration-200"
+            style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#6b5f52'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#3a3028'; }}
+          >
+            ← back
+          </button>
+          <span className="text-xs" style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}>
+            {stepIndex + 1} / {STEPS.length}
+          </span>
+        </div>
+        <div style={{ height: '1px', background: '#1a1610', width: '100%', position: 'relative' }}>
+          <div
+            style={{
+              height: '1px',
+              background: '#8a6540',
+              width: `${progress}%`,
+              transition: 'width 0.4s ease',
+            }}
+          />
         </div>
       </div>
 
-      {/* Sections */}
-      <div className="space-y-16">
-        {SECTIONS.map((section) => {
-          if (section.isIntro) {
-            return (
-              <div key={section.number} className="entry-section relative">
-                <span className="section-number">{section.number}</span>
-                <p
-                  className="text-xs tracking-[0.25em] uppercase mb-2"
-                  style={{ color: '#6b5f52' }}
-                >
-                  {section.number}
-                </p>
-                <h2
-                  className="text-3xl font-light mb-1"
-                  style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
-                >
-                  {section.title}
-                </h2>
-                {section.subtitle && (
-                  <p className="text-sm italic" style={{ color: '#6b5f52' }}>
-                    {section.subtitle}
-                  </p>
-                )}
-                <div className="mt-6 p-4 border-l-2" style={{ borderColor: '#2a2318' }}>
-                  <p className="text-xs leading-relaxed" style={{ color: '#6b5f52' }}>
-                    Step away first. 10 minutes. No phone, no music. Let your mind settle before you write.
-                  </p>
-                </div>
-              </div>
-            );
-          }
+      {/* Question */}
+      <div key={animKey} className="step-enter flex-1 flex flex-col justify-center py-8">
+        <p
+          className="text-xs tracking-[0.3em] uppercase mb-5"
+          style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
+        >
+          {currentStep.group}
+        </p>
+        <h2
+          className="text-4xl font-light mb-2 leading-snug"
+          style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
+        >
+          {currentStep.question}
+        </h2>
+        {currentStep.hint && (
+          <p className="text-xs mb-8" style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}>
+            {currentStep.hint}
+          </p>
+        )}
+        {!currentStep.hint && <div className="mb-8" />}
 
-          return (
-            <div key={section.number} className="entry-section relative">
-              <span className="section-number">{section.number}</span>
-              <p
-                className="text-xs tracking-[0.25em] uppercase mb-2"
-                style={{ color: '#6b5f52' }}
-              >
-                {section.number}
-              </p>
-              <h2
-                className="text-3xl font-light mb-6"
-                style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
-              >
-                {section.title}
-              </h2>
+        <textarea
+          ref={textareaRef}
+          className="journal-textarea"
+          value={currentValue}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={currentStep.placeholder}
+          rows={5}
+        />
 
-              <div className="space-y-8">
-                {section.fields.map((field) => (
-                  <div key={field.key}>
-                    {'label' in field && field.label && (
-                      <p
-                        className="text-xs tracking-wide mb-2"
-                        style={{ color: '#8a6540', fontFamily: 'var(--font-dm-mono)' }}
-                      >
-                        {field.label}
-                      </p>
-                    )}
-                    <AutoResizeTextarea
-                      value={entry[field.key as FieldKey] as string}
-                      onChange={(val) => handleChange(field.key as FieldKey, val)}
-                      placeholder={field.placeholder}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <hr className="divider mt-10" />
-            </div>
-          );
-        })}
+        <p className="text-xs mt-3" style={{ color: '#2a2318', fontFamily: 'var(--font-dm-mono)' }}>
+          ⌘ + Enter to continue
+        </p>
       </div>
 
-      {/* Affirmation */}
-      <div className="entry-section mt-20 text-center py-10">
-        <div
-          style={{ width: '1px', height: '60px', background: 'linear-gradient(to bottom, transparent, #2a2318)', margin: '0 auto 2rem' }}
-        />
-        <p className="affirmation text-xl">
-          &ldquo;I showed up today. Tomorrow I improve.&rdquo;
-        </p>
-        <div
-          style={{ width: '1px', height: '60px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '2rem auto 0' }}
-        />
+      {/* Footer actions */}
+      <div className="flex items-center justify-between pt-6">
+        <div className="text-xs" style={{ color: '#2a2318', fontFamily: 'var(--font-dm-mono)' }}>
+          {saving ? 'saving...' : ''}
+        </div>
+        <button
+          onClick={goNext}
+          className="px-8 py-3 text-sm tracking-[0.15em] uppercase transition-all duration-200"
+          style={{
+            fontFamily: 'var(--font-dm-mono)',
+            background: 'rgba(196,147,90,0.1)',
+            border: '1px solid #8a6540',
+            color: '#c4935a',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.18)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.1)'; }}
+        >
+          {isLast ? 'Finish' : 'Next →'}
+        </button>
       </div>
     </div>
-  );
-}
-
-function AutoResizeTextarea({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  placeholder: string;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.style.height = 'auto';
-      ref.current.style.height = `${ref.current.scrollHeight}px`;
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      ref={ref}
-      className="journal-textarea"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={3}
-    />
   );
 }
