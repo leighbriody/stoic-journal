@@ -1,26 +1,162 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-stone: #0c0a08;
+  --color-ember: #141109;
+  --color-gold: #c4935a;
+  --color-gold-dim: #8a6540;
+  --color-cream: #e6ddd0;
+  --color-muted: #6b5f52;
+  --color-border: #2a2318;
+  --color-surface: #181410;
+  --font-display: var(--font-cormorant);
+  --font-mono: var(--font-dm-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #0c0a08;
+  color: #e6ddd0;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #0c0a08;
+  color: #e6ddd0;
+  font-family: var(--font-dm-mono), 'Courier New', monospace;
+  min-height: 100vh;
 }
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* Radial warm glow at top */
+body::after {
+  content: '';
+  position: fixed;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(ellipse at center, rgba(196, 147, 90, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0c0a08;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2318;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8a6540;
+}
+
+/* Journal textarea styling */
+.journal-textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #2a2318;
+  color: #e6ddd0;
+  font-family: var(--font-dm-mono), 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  resize: none;
+  width: 100%;
+  outline: none;
+  padding: 0.5rem 0;
+  transition: border-color 0.3s ease;
+  min-height: 80px;
+}
+
+.journal-textarea:focus {
+  border-bottom-color: #8a6540;
+}
+
+.journal-textarea::placeholder {
+  color: #3a3028;
+}
+
+/* Section number */
+.section-number {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: 4rem;
+  font-weight: 300;
+  color: #2a2318;
+  line-height: 1;
+  user-select: none;
+  position: absolute;
+  top: -1rem;
+  right: 0;
+}
+
+/* Divider line */
+.divider {
+  border: none;
+  border-top: 1px solid #2a2318;
+  margin: 0;
+}
+
+/* Affirmation text */
+.affirmation {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-style: italic;
+  color: #8a6540;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+/* Save indicator */
+.save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c4935a;
+  display: inline-block;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Entry fade in */
+.entry-section {
+  animation: fadeUp 0.4s ease forwards;
+  opacity: 0;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.entry-section:nth-child(1) { animation-delay: 0.05s; }
+.entry-section:nth-child(2) { animation-delay: 0.1s; }
+.entry-section:nth-child(3) { animation-delay: 0.15s; }
+.entry-section:nth-child(4) { animation-delay: 0.2s; }
+.entry-section:nth-child(5) { animation-delay: 0.25s; }
+.entry-section:nth-child(6) { animation-delay: 0.3s; }
+.entry-section:nth-child(7) { animation-delay: 0.35s; }
+.entry-section:nth-child(8) { animation-delay: 0.4s; }
