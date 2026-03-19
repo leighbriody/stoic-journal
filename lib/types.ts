@@ -5,6 +5,7 @@ export interface JournalEntry {
   didWell: string;
   fellShort: string;
   actedIntentionally: string;
+  outsideControl: string;
   followedThrough: string;
   smallWin: string;
   drifting: string;
@@ -12,5 +13,15 @@ export interface JournalEntry {
   avoiding: string;
   whatMatters: string;
   letGo: string;
+  savedAt: string;
+}
+
+export interface WeeklyReview {
+  id: string;
+  weekStart: string; // YYYY-MM-DD (Monday)
+  patterns: string;
+  virtue: string;
+  carryForward: string;
+  proudOf: string;
   savedAt: string;
 }

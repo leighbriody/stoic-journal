@@ -2,31 +2,44 @@
 
 import { useState, useEffect } from 'react';
 import type { JournalEntry } from '@/lib/types';
-import { getEntries, formatDate } from '@/lib/storage';
+import { getEntries, formatDate, getRecurringPatterns, exportToMarkdown } from '@/lib/storage';
 
-const FIELD_LABELS: { key: keyof Omit<JournalEntry, 'id' | 'date' | 'savedAt'>; section: string; label: string }[] = [
-  { key: 'mindRightNow', section: '02', label: "What's on your mind?" },
-  { key: 'didWell', section: '03', label: 'Did well' },
-  { key: 'fellShort', section: '03', label: 'Fell short' },
-  { key: 'actedIntentionally', section: '03', label: 'Intentional or reactive?' },
-  { key: 'followedThrough', section: '04', label: 'Followed through?' },
-  { key: 'smallWin', section: '04', label: 'Small win' },
-  { key: 'drifting', section: '04', label: 'Drifting?' },
-  { key: 'improveTomorrow', section: '05', label: 'Improve tomorrow' },
-  { key: 'avoiding', section: '06', label: 'Avoiding?' },
-  { key: 'whatMatters', section: '07', label: 'What actually matters?' },
-  { key: 'letGo', section: '07', label: 'Let go of' },
+const FIELD_LABELS: { key: keyof Omit<JournalEntry, 'id' | 'date' | 'savedAt'>; label: string }[] = [
+  { key: 'mindRightNow', label: "What's on your mind?" },
+  { key: 'didWell', label: 'Did well' },
+  { key: 'fellShort', label: 'Fell short' },
+  { key: 'actedIntentionally', label: 'Intentional or reactive?' },
+  { key: 'outsideControl', label: 'Outside my control' },
+  { key: 'followedThrough', label: 'Followed through?' },
+  { key: 'smallWin', label: 'Small win' },
+  { key: 'drifting', label: 'Drifting?' },
+  { key: 'improveTomorrow', label: 'Improve tomorrow' },
+  { key: 'avoiding', label: 'Avoiding?' },
+  { key: 'whatMatters', label: 'What actually matters?' },
+  { key: 'letGo', label: 'Let go of' },
 ];
+
+function downloadFile(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function HistoryView() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selected, setSelected] = useState<JournalEntry | null>(null);
   const [filter, setFilter] = useState('');
+  const [patterns, setPatterns] = useState<{ word: string; count: number }[]>([]);
 
   useEffect(() => {
     const all = getEntries().sort((a, b) => b.date.localeCompare(a.date));
     setEntries(all);
     if (all.length > 0) setSelected(all[0]);
+    setPatterns(getRecurringPatterns());
   }, []);
 
   const filtered = filter
@@ -71,12 +84,55 @@ export default function HistoryView() {
         >
           Archive
         </p>
-        <h1
-          className="text-5xl font-light"
-          style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
-        >
-          Past Evenings
-        </h1>
+        <div className="flex items-end justify-between">
+          <h1
+            className="text-5xl font-light"
+            style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
+          >
+            Past Evenings
+          </h1>
+          <button
+            onClick={() => downloadFile(exportToMarkdown(), `journal-${new Date().toISOString().split('T')[0]}.md`)}
+            className="text-xs tracking-[0.2em] uppercase px-4 py-2 transition-all duration-200 mb-1"
+            style={{
+              fontFamily: 'var(--font-dm-mono)',
+              color: '#6b5f52',
+              border: '1px solid #2a2318',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#c4935a'; e.currentTarget.style.borderColor = '#8a6540'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#6b5f52'; e.currentTarget.style.borderColor = '#2a2318'; }}
+          >
+            Export .md
+          </button>
+        </div>
+
+        {/* Recurring patterns */}
+        {patterns.length > 0 && (
+          <div className="mt-8 p-5" style={{ border: '1px solid #2a2318', background: 'rgba(196,147,90,0.02)' }}>
+            <p className="text-xs tracking-[0.3em] uppercase mb-4" style={{ color: '#8a6540', fontFamily: 'var(--font-dm-mono)' }}>
+              Recurring themes
+            </p>
+            <p className="text-xs mb-4" style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}>
+              Words appearing across drifting & avoiding entries
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {patterns.map(({ word, count }) => (
+                <span
+                  key={word}
+                  className="text-xs px-3 py-1"
+                  style={{
+                    fontFamily: 'var(--font-dm-mono)',
+                    color: count >= 3 ? '#c4935a' : '#6b5f52',
+                    border: `1px solid ${count >= 3 ? '#8a6540' : '#2a2318'}`,
+                    background: count >= 3 ? 'rgba(196,147,90,0.06)' : 'transparent',
+                  }}
+                >
+                  {word} <span style={{ color: '#3a3028' }}>×{count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Month filter */}
         {months.length > 1 && (
@@ -197,7 +253,6 @@ export default function HistoryView() {
                     className="text-xs tracking-[0.2em] uppercase mb-2"
                     style={{ color: '#8a6540', fontFamily: 'var(--font-dm-mono)' }}
                   >
-                    <span style={{ color: '#3a3028' }}>{f.section} — </span>
                     {f.label}
                   </p>
                   <p

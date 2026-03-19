@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JournalEntry } from '@/lib/types';
 import { saveEntry, getEntryByDate, emptyEntry, formatDate, getToday } from '@/lib/storage';
+import { getQuoteForDate, getMementoForDate } from '@/lib/quotes';
 
 type FieldKey = keyof Omit<JournalEntry, 'id' | 'date' | 'savedAt'>;
 
@@ -19,6 +20,7 @@ const STEPS: Step[] = [
   { key: 'didWell', group: 'Reflection', question: 'What did I do well today?', placeholder: 'Be honest with yourself.', hint: 'Even small things count.' },
   { key: 'fellShort', group: 'Reflection', question: 'Where did I fall short?', placeholder: 'Own it.', hint: 'No self-punishment — just clarity.' },
   { key: 'actedIntentionally', group: 'Reflection', question: 'Did I act intentionally or reactively?', placeholder: 'How did it feel to move through the day?', hint: undefined },
+  { key: 'outsideControl', group: 'Control', question: 'What happened today that was outside my control?', placeholder: 'Name it — then let it go.', hint: 'Did you give it energy it didn\'t deserve?' },
   { key: 'followedThrough', group: 'Habits', question: 'Did I follow through on what I said I would do?', placeholder: 'Yes / No / Partly — and why.', hint: undefined },
   { key: 'smallWin', group: 'Habits', question: "What's one small win today?", placeholder: 'Find it. It exists.', hint: undefined },
   { key: 'drifting', group: 'Habits', question: 'Where am I drifting?', placeholder: 'Be specific. Name the drift.', hint: undefined },
@@ -116,25 +118,41 @@ export default function JournalForm() {
   // ── Intro screen ──────────────────────────────────────────────
   if (screen === 'intro') {
     const alreadyStarted = STEPS.some((s) => s.key && entry[s.key]?.trim());
+    const quote = getQuoteForDate(today);
     return (
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
         <div className="step-enter max-w-md w-full text-center">
           <p
-            className="text-xs tracking-[0.4em] uppercase mb-8"
+            className="text-xs tracking-[0.4em] uppercase mb-10"
             style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
           >
             Evening Solitude · {formatDate(today)}
           </p>
 
+          {/* Daily quote */}
+          <div className="mb-10 px-2">
+            <p
+              className="text-xl font-light italic leading-relaxed mb-3"
+              style={{ fontFamily: 'var(--font-cormorant)', color: '#c9bfb2' }}
+            >
+              &ldquo;{quote.text}&rdquo;
+            </p>
+            <p className="text-xs" style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}>
+              — {quote.author}, <span style={{ color: '#3a3028' }}>{quote.source}</span>
+            </p>
+          </div>
+
+          <div style={{ height: '1px', background: '#2a2318', marginBottom: '2.5rem' }} />
+
           <h1
-            className="text-6xl font-light mb-4 leading-tight"
+            className="text-5xl font-light mb-4 leading-tight"
             style={{ fontFamily: 'var(--font-cormorant)', color: '#e6ddd0' }}
           >
             Clear the noise
           </h1>
 
           <p
-            className="text-sm mb-12 leading-relaxed"
+            className="text-sm mb-10 leading-relaxed"
             style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
           >
             Walk first. 10 minutes. No phone, no music.
@@ -154,7 +172,7 @@ export default function JournalForm() {
             onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.18)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(196,147,90,0.1)'; }}
           >
-            {alreadyStarted ? 'Continue tonight\'s entry' : 'Begin'}
+            {alreadyStarted ? "Continue tonight's entry" : 'Begin'}
           </button>
 
           {alreadyStarted && (
@@ -169,6 +187,7 @@ export default function JournalForm() {
 
   // ── Done screen ───────────────────────────────────────────────
   if (screen === 'done') {
+    const memento = getMementoForDate(today);
     return (
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
         <div className="completion-enter max-w-md w-full text-center">
@@ -182,11 +201,21 @@ export default function JournalForm() {
             {formatDate(today)}
           </p>
           <p
-            className="text-3xl font-light italic mb-12 leading-relaxed"
+            className="text-3xl font-light italic mb-8 leading-relaxed"
             style={{ fontFamily: 'var(--font-cormorant)', color: '#c4935a' }}
           >
             &ldquo;I showed up today.<br />Tomorrow I improve.&rdquo;
           </p>
+
+          {memento && (
+            <p
+              className="text-sm italic leading-relaxed mb-8 px-4"
+              style={{ fontFamily: 'var(--font-cormorant)', color: '#6b5f52', fontSize: '1rem' }}
+            >
+              &ldquo;{memento}&rdquo;
+            </p>
+          )}
+
           <div
             style={{ width: '1px', height: '80px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '0 auto 3rem' }}
           />
