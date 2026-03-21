@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JournalEntry } from '@/lib/types';
 import { saveEntry, getEntryByDate, emptyEntry, formatDate, getToday } from '@/lib/storage';
 import { getQuoteForDate, getMementoForDate } from '@/lib/quotes';
+import StoicMentor from './StoicMentor';
 
 type FieldKey = keyof Omit<JournalEntry, 'id' | 'date' | 'savedAt'>;
 
@@ -136,8 +137,8 @@ export default function JournalForm() {
           {/* Daily quote */}
           <div className="mb-10 px-2">
             <p
-              className="text-xl font-light italic leading-relaxed mb-3"
-              style={{ fontFamily: 'var(--font-cormorant)', color: '#c9bfb2' }}
+              className="text-sm font-light leading-relaxed mb-3"
+              style={{ fontFamily: 'var(--font-dm-mono)', color: '#c9bfb2' }}
             >
               &ldquo;{quote.text}&rdquo;
             </p>
@@ -220,8 +221,10 @@ export default function JournalForm() {
             </p>
           )}
 
+          <StoicMentor entry={entry} />
+
           <div
-            style={{ width: '1px', height: '80px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '0 auto 3rem' }}
+            style={{ width: '1px', height: '80px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '3rem auto 3rem' }}
           />
           <button
             onClick={() => { setScreen('writing'); setStepIndex(0); setAnimKey((k) => k + 1); }}
