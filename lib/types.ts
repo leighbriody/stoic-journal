@@ -16,6 +16,12 @@ export interface JournalEntry {
   savedAt: string;
 }
 
+export interface MentorChat {
+  date: string; // YYYY-MM-DD
+  messages: { role: 'user' | 'assistant'; content: string }[];
+  savedAt: string;
+}
+
 export interface WeeklyReview {
   id: string;
   weekStart: string; // YYYY-MM-DD (Monday)

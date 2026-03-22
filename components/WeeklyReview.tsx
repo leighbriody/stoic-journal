@@ -11,6 +11,7 @@ import {
   formatDate,
 } from '@/lib/storage';
 import type { JournalEntry } from '@/lib/types';
+import WeeklyMentor from './WeeklyMentor';
 
 const WEEKLY_STEPS = [
   {
@@ -183,8 +184,8 @@ export default function WeeklyReview() {
   // ── Done ──────────────────────────────────────────────────────
   if (screen === 'done') {
     return (
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
-        <div className="completion-enter max-w-md w-full text-center">
+      <div className="relative z-10 max-w-2xl mx-auto px-6 py-16 pt-24">
+        <div className="completion-enter text-center">
           <div style={{ width: '1px', height: '80px', background: 'linear-gradient(to bottom, transparent, #2a2318)', margin: '0 auto 3rem' }} />
           <p className="text-xs tracking-[0.4em] uppercase mb-6" style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}>
             Week reviewed
@@ -193,6 +194,11 @@ export default function WeeklyReview() {
             &ldquo;What we do now echoes in eternity.&rdquo;
           </p>
           <p className="text-xs mb-8" style={{ color: '#3a3028', fontFamily: 'var(--font-dm-mono)' }}>— Marcus Aurelius</p>
+        </div>
+
+        <WeeklyMentor review={review} weekEntries={weekEntries} />
+
+        <div className="text-center mt-12">
           <div style={{ width: '1px', height: '80px', background: 'linear-gradient(to top, transparent, #2a2318)', margin: '0 auto 3rem' }} />
           <button
             onClick={() => { setScreen('overview'); }}

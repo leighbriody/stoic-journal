@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import type { WeeklyReview } from '@/lib/types';
 import type { JournalEntry } from '@/lib/types';
-import { getMentorChat, saveMentorChat } from '@/lib/storage';
+import { getWeeklyMentorChat, saveWeeklyMentorChat } from '@/lib/storage';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-interface StoicMentorProps {
-  entry: JournalEntry;
+interface WeeklyMentorProps {
+  review: WeeklyReview;
+  weekEntries: JournalEntry[];
 }
 
-export default function StoicMentor({ entry }: StoicMentorProps) {
+export default function WeeklyMentor({ review, weekEntries }: WeeklyMentorProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -24,13 +26,13 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
 
   // Load saved chat on mount
   useEffect(() => {
-    const saved = getMentorChat(entry.date);
+    const saved = getWeeklyMentorChat(review.weekStart);
     if (saved && saved.messages.length > 0) {
       setMessages(saved.messages);
       setStarted(true);
       setViewingHistory(true);
     }
-  }, [entry.date]);
+  }, [review.weekStart]);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -52,16 +54,16 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
     async (conversationMessages: Message[]) => {
       setStreaming(true);
 
-      // Add empty assistant message to fill via streaming
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       try {
-        const res = await fetch('/api/mentor', {
+        const res = await fetch('/api/mentor/weekly', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: conversationMessages,
-            journalEntry: entry,
+            weeklyReview: review,
+            weekEntries,
           }),
         });
 
@@ -126,14 +128,13 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
       } finally {
         setStreaming(false);
         setViewingHistory(false);
-        // Save the conversation after each response
         setMessages((prev) => {
-          saveMentorChat(entry.date, prev);
+          saveWeeklyMentorChat(review.weekStart, prev);
           return prev;
         });
       }
     },
-    [entry]
+    [review, weekEntries]
   );
 
   const beginSession = useCallback(() => {
@@ -176,15 +177,15 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
           className="text-sm font-light leading-relaxed mb-6"
           style={{ fontFamily: 'var(--font-dm-mono)', color: '#c9bfb2' }}
         >
-          &ldquo;It is not that we have a short time to live, but that we waste a great deal of it.&rdquo;
+          &ldquo;We suffer more often in imagination than in reality.&rdquo;
         </p>
         <p
           className="text-xs leading-relaxed mb-6"
           style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
         >
-          Share your journal with Seneca. He will read what you wrote
+          Share your weekly review with Seneca. He will read your week
           <br />
-          and reflect back — honestly, as a mentor should.
+          and reflect on the patterns — honestly, as a mentor should.
         </p>
         <button
           onClick={beginSession}
@@ -202,7 +203,7 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
             e.currentTarget.style.background = 'rgba(196,147,90,0.1)';
           }}
         >
-          Consult Seneca
+          Consult Seneca on your week
         </button>
       </div>
     );
@@ -216,7 +217,7 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
         className="text-xs tracking-[0.3em] uppercase mb-6"
         style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
       >
-        Seneca speaks
+        Seneca reflects on your week
       </p>
 
       {/* Messages */}
@@ -271,14 +272,14 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
         ))}
       </div>
 
-      {/* Input area */}
+      {/* Viewing saved history */}
       {!streaming && messages.length > 0 && viewingHistory && (
         <div className="step-enter flex items-center gap-4">
           <p
             className="text-xs"
             style={{ color: '#6b5f52', fontFamily: 'var(--font-dm-mono)' }}
           >
-            Saved conversation from this day
+            Saved conversation from this week
           </p>
           <button
             onClick={() => setViewingHistory(false)}
@@ -300,6 +301,8 @@ export default function StoicMentor({ entry }: StoicMentorProps) {
           </button>
         </div>
       )}
+
+      {/* Input area */}
       {!streaming && messages.length > 0 && !viewingHistory && (
         <div className="step-enter">
           <textarea

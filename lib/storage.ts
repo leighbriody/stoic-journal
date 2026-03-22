@@ -1,4 +1,4 @@
-import type { JournalEntry, WeeklyReview } from './types';
+import type { JournalEntry, MentorChat, WeeklyReview } from './types';
 
 const STORAGE_KEY = 'stoic_journal_entries';
 
@@ -61,6 +61,60 @@ export function emptyEntry(date: string): JournalEntry {
     letGo: '',
     savedAt: '',
   };
+}
+
+// ── Mentor chats ─────────────────────────────────────────────
+
+const MENTOR_KEY = 'stoic_journal_mentor_chats';
+
+export function getMentorChats(): MentorChat[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(MENTOR_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getMentorChat(date: string): MentorChat | null {
+  return getMentorChats().find((c) => c.date === date) ?? null;
+}
+
+export function saveMentorChat(date: string, messages: { role: 'user' | 'assistant'; content: string }[]): void {
+  const chats = getMentorChats();
+  const idx = chats.findIndex((c) => c.date === date);
+  const updated: MentorChat = { date, messages, savedAt: new Date().toISOString() };
+  if (idx >= 0) chats[idx] = updated;
+  else chats.push(updated);
+  localStorage.setItem(MENTOR_KEY, JSON.stringify(chats));
+}
+
+const WEEKLY_MENTOR_KEY = 'stoic_journal_weekly_mentor_chats';
+
+export function getWeeklyMentorChat(weekStart: string): MentorChat | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(WEEKLY_MENTOR_KEY);
+    const chats: MentorChat[] = raw ? JSON.parse(raw) : [];
+    return chats.find((c) => c.date === weekStart) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveWeeklyMentorChat(weekStart: string, messages: { role: 'user' | 'assistant'; content: string }[]): void {
+  if (typeof window === 'undefined') return;
+  let chats: MentorChat[] = [];
+  try {
+    const raw = localStorage.getItem(WEEKLY_MENTOR_KEY);
+    chats = raw ? JSON.parse(raw) : [];
+  } catch { /* empty */ }
+  const idx = chats.findIndex((c) => c.date === weekStart);
+  const updated: MentorChat = { date: weekStart, messages, savedAt: new Date().toISOString() };
+  if (idx >= 0) chats[idx] = updated;
+  else chats.push(updated);
+  localStorage.setItem(WEEKLY_MENTOR_KEY, JSON.stringify(chats));
 }
 
 // ── Weekly review ─────────────────────────────────────────────
@@ -164,6 +218,16 @@ export function exportToMarkdown(): string {
     if (e.avoiding) lines.push(`**Avoiding**\n${e.avoiding}\n`);
     if (e.whatMatters) lines.push(`**What actually matters**\n${e.whatMatters}\n`);
     if (e.letGo) lines.push(`**Let go of**\n${e.letGo}\n`);
+
+    const chat = getMentorChat(e.date);
+    if (chat && chat.messages.length > 0) {
+      lines.push(`### Conversation with Seneca\n`);
+      for (const msg of chat.messages) {
+        const speaker = msg.role === 'assistant' ? 'Seneca' : 'You';
+        lines.push(`**${speaker}:**\n${msg.content}\n`);
+      }
+    }
+
     lines.push('---\n');
   }
 
